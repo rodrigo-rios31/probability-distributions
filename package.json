@@ -1,0 +1,11 @@
+{
+  "name": "probability-distributions",
+  "version": "1.0.0",
+  "description": "Calculadora de distribuciones de probabilidad con gráficas interactivas, fórmulas y tablas.",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/accuracy.test.js"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Distribuciones de Probabilidad</title>
+  <meta name="description" content="Calculadora de distribuciones de probabilidad con gráficas interactivas, fórmulas y tablas.">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <script>
+    // Aplica el tema guardado antes de pintar (evita parpadeo)
+    try { const t = localStorage.getItem('pd-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body data-view="calc">
+  <!-- ===================== Barra superior ===================== -->
+  <header class="topbar">
+    <div class="brand">
+      <img src="icons/icon.svg" alt="" class="brand-logo" width="36" height="36">
+      <div>
+        <h1>Distribuciones de Probabilidad</h1>
+        <p class="brand-sub">Calculadora · Gráficas · Fórmulas</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Secciones">
+      <button class="tab active" role="tab" data-view="calc" aria-selected="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 20c3-1 4-14 7-14s4 13 7 14"/></svg>
+        <span>Calculadora</span>
+      </button>
+      <button class="tab" role="tab" data-view="formulas" aria-selected="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h-3.5a2 2 0 0 0-2 1.8L8 19a2 2 0 0 1-2 1.8H5M6 11h8M14 14l5 6M19 14l-5 6"/></svg>
+        <span>Fórmulas</span>
+      </button>
+      <button class="tab" role="tab" data-view="table" aria-selected="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></svg>
+        <span>Tabla</span>
+      </button>
+    </nav>
+    <div class="top-actions">
+      <button class="icon-btn" id="btn-share" title="Copiar enlace con esta configuración" aria-label="Compartir">
+        <svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1 1M14 10a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1-1"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-theme" title="Cambiar tema" aria-label="Cambiar tema">
+        <svg viewBox="0 0 24 24" class="i-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg viewBox="0 0 24 24" class="i-moon"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-help" title="Ayuda" aria-label="Ayuda">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9a3 3 0 0 1 5.6 1c0 2-3 2.5-3 4.5M12 17.5v.01"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ===================== Panel de control ===================== -->
+    <aside class="controls">
+      <button class="dist-picker card" id="btn-picker" aria-haspopup="dialog">
+        <canvas class="spark" id="picker-spark" width="88" height="48" aria-hidden="true"></canvas>
+        <span class="dp-text">
+          <span class="dp-kind" id="dp-kind">Continua</span>
+          <span class="dp-name" id="dp-name">Normal</span>
+          <span class="dp-notation" id="dp-notation">X ~ N(μ, σ)</span>
+        </span>
+        <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+
+      <section class="card panel-params">
+        <header class="card-head">
+          <h2>Parámetros</h2>
+          <button class="link-btn" id="btn-reset-params" title="Restablecer valores por defecto">Restablecer</button>
+        </header>
+        <div id="params" class="params"></div>
+        <p class="error-msg" id="param-error" role="alert" hidden></p>
+      </section>
+
+      <section class="card panel-calc">
+        <header class="card-head">
+          <h2>Cálculo</h2>
+        </header>
+        <div class="modes" id="modes" role="radiogroup" aria-label="Tipo de cálculo">
+          <button class="mode" data-mode="lower" role="radio">
+            <svg viewBox="0 0 40 24"><path class="m-fill" d="M2 22 C8 22 11 20 14 14 L18 6 L18 22 Z"/><path class="m-line" d="M2 22 C8 22 11 20 14 14 C16 9 18 4 20 4 C22 4 24 9 26 14 C29 20 32 22 38 22"/></svg>
+            <span>Cola izq.</span>
+          </button>
+          <button class="mode" data-mode="upper" role="radio">
+            <svg viewBox="0 0 40 24"><path class="m-fill" d="M22 6 L26 14 C29 20 32 22 38 22 L22 22 Z"/><path class="m-line" d="M2 22 C8 22 11 20 14 14 C16 9 18 4 20 4 C22 4 24 9 26 14 C29 20 32 22 38 22"/></svg>
+            <span>Cola der.</span>
+          </button>
+          <button class="mode" data-mode="between" role="radio">
+            <svg viewBox="0 0 40 24"><path class="m-fill" d="M13 22 L13 15.5 C15.5 10 17.5 4 20 4 C22.5 4 24.5 10 27 15.5 L27 22 Z"/><path class="m-line" d="M2 22 C8 22 11 20 14 14 C16 9 18 4 20 4 C22 4 24 9 26 14 C29 20 32 22 38 22"/></svg>
+            <span>Intervalo</span>
+          </button>
+          <button class="mode" data-mode="tails" role="radio">
+            <svg viewBox="0 0 40 24"><path class="m-fill" d="M2 22 C7 22 9.5 21 11.5 18.5 L11.5 22 Z M28.5 18.5 C30.5 21 33 22 38 22 L28.5 22 Z"/><path class="m-line" d="M2 22 C8 22 11 20 14 14 C16 9 18 4 20 4 C22 4 24 9 26 14 C29 20 32 22 38 22"/></svg>
+            <span>Dos colas</span>
+          </button>
+          <button class="mode" data-mode="inverse" role="radio">
+            <svg viewBox="0 0 40 24"><path class="m-line" d="M2 22 C8 22 11 20 14 14 C16 9 18 4 20 4 C22 4 24 9 26 14 C29 20 32 22 38 22"/><path class="m-arrow" d="M8 9h10M14 5.5l4 3.5-4 3.5"/></svg>
+            <span>Inversa</span>
+          </button>
+        </div>
+
+        <div class="expr" id="expr"></div>
+        <p class="hint" id="calc-hint"></p>
+      </section>
+    </aside>
+
+    <!-- ===================== Contenido principal ===================== -->
+    <section class="content">
+      <!-- Vista: Calculadora -->
+      <div class="view view-calc">
+        <article class="card chart-card">
+          <div class="result" id="result" aria-live="polite">
+            <div class="result-main">
+              <div class="result-label" id="result-label">P(X ≤ x)</div>
+              <div class="result-value" id="result-value">—</div>
+              <div class="result-sub" id="result-sub"></div>
+            </div>
+            <div class="result-tools">
+              <label class="select-mini" title="Número de decimales">
+                <span>Decimales</span>
+                <select id="decimals">
+                  <option value="4">4</option>
+                  <option value="6" selected>6</option>
+                  <option value="8">8</option>
+                  <option value="10">10</option>
+                  <option value="12">12</option>
+                </select>
+              </label>
+              <button class="icon-btn small" id="btn-copy" title="Copiar resultado" aria-label="Copiar resultado">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="steps" id="steps"></div>
+
+          <div class="chart-head">
+            <h3 class="chart-title" id="chart-title">X ~ N(μ = 0, σ = 1)</h3>
+            <div class="chart-tools">
+              <div class="seg" role="radiogroup" aria-label="Tipo de gráfica">
+                <button class="seg-btn active" data-chartview="pdf" id="btn-view-pdf">Densidad</button>
+                <button class="seg-btn" data-chartview="cdf">Acumulada</button>
+              </div>
+              <button class="chip-toggle active" id="btn-mean" title="Mostrar media y desviaciones estándar" aria-pressed="true">μ ± σ</button>
+              <button class="icon-btn small" id="btn-png" title="Descargar imagen PNG" aria-label="Descargar imagen">
+                <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="chart" aria-label="Gráfica de la distribución"></canvas>
+            <div class="chart-error" id="chart-error" hidden></div>
+          </div>
+          <p class="chart-foot">Arrastra los puntos rojos o haz clic sobre la gráfica para mover los valores.</p>
+        </article>
+
+        <article class="card">
+          <header class="card-head"><h2>Medidas de la distribución</h2></header>
+          <div class="stats" id="stats"></div>
+        </article>
+      </div>
+
+      <!-- Vista: Fórmulas -->
+      <div class="view view-formulas">
+        <article class="card formulas" id="formulas"></article>
+      </div>
+
+      <!-- Vista: Tabla -->
+      <div class="view view-table">
+        <article class="card">
+          <header class="card-head">
+            <h2>Tabla de probabilidades</h2>
+            <div class="table-actions">
+              <button class="btn ghost small" id="btn-table-copy">Copiar</button>
+              <button class="btn small" id="btn-table-csv">Descargar CSV</button>
+            </div>
+          </header>
+          <div class="table-controls">
+            <label class="field"><span>Desde</span><input id="t-from" inputmode="decimal" autocomplete="off"></label>
+            <label class="field"><span>Hasta</span><input id="t-to" inputmode="decimal" autocomplete="off"></label>
+            <label class="field" id="t-step-field"><span>Paso</span><input id="t-step" inputmode="decimal" autocomplete="off"></label>
+            <button class="btn ghost small" id="btn-table-auto" title="Rango automático">Automático</button>
+          </div>
+          <div class="table-wrap">
+            <table class="prob-table" id="prob-table"></table>
+          </div>
+          <p class="hint" id="table-hint"></p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================== Selector de distribución ===================== -->
+  <dialog class="sheet" id="dlg-picker" aria-label="Elegir distribución">
+    <div class="sheet-head">
+      <h2>Elige una distribución</h2>
+      <button class="icon-btn" data-close aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="picker-search" placeholder="Buscar distribución…" autocomplete="off">
+    </div>
+    <div class="picker-body" id="picker-body"></div>
+  </dialog>
+
+  <!-- ===================== Ayuda ===================== -->
+  <dialog class="sheet" id="dlg-help" aria-label="Ayuda">
+    <div class="sheet-head">
+      <h2>Cómo usar la calculadora</h2>
+      <button class="icon-btn" data-close aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="help-body">
+      <ol class="help-steps">
+        <li><b>Elige la distribución</b> tocando la tarjeta superior. Hay 15 distribuciones continuas y 7 discretas.</li>
+        <li><b>Escribe los parámetros</b> o muévelos con el deslizador. Los campos aceptan expresiones como <code>1/6</code>, <code>sqrt(2)</code> o <code>2.5e-3</code>; el botón <b>±</b> cambia el signo.</li>
+        <li><b>Elige el tipo de cálculo</b>:
+          <ul>
+            <li><b>Cola izquierda</b>: P(X ≤ x) o P(X &lt; x)</li>
+            <li><b>Cola derecha</b>: P(X ≥ x) o P(X &gt; x)</li>
+            <li><b>Intervalo</b>: P(x₁ ≤ X ≤ x₂)</li>
+            <li><b>Dos colas</b>: P(X ≤ x₁) + P(X ≥ x₂)</li>
+            <li><b>Inversa</b>: dada una probabilidad p encuentra el valor x (percentiles, valores críticos).</li>
+          </ul>
+        </li>
+        <li><b>Arrastra los puntos rojos</b> de la gráfica para cambiar x en tiempo real, o haz clic/toca en cualquier punto de la gráfica.</li>
+        <li>Cambia entre <b>Densidad</b> (área bajo la curva = probabilidad) y <b>Acumulada</b> (F(x) = P(X ≤ x)).</li>
+        <li>En <b>Fórmulas</b> encontrarás la función de densidad, la acumulada, la media, la varianza y usos de cada distribución. En <b>Tabla</b> puedes generar y exportar tablas de probabilidad.</li>
+      </ol>
+      <div class="help-note">
+        <h3>Sobre &lt; y ≤</h3>
+        <p>En las distribuciones <b>continuas</b> P(X = x) = 0, así que P(X &lt; x) = P(X ≤ x). En las <b>discretas</b> sí importa: P(X &lt; 5) = P(X ≤ 4).</p>
+      </div>
+      <div class="help-note">
+        <h3>Precisión</h3>
+        <p>Todos los cálculos usan algoritmos numéricos de doble precisión (Cody para la normal, fracciones continuas para las funciones gamma y beta incompletas, Loader para binomial y Poisson). Las probabilidades de las colas se calculan directamente, sin restar de 1, por lo que valores tan pequeños como 10⁻³⁰⁰ son exactos. Verificado contra referencias de 50 dígitos con error relativo menor a 10⁻¹¹.</p>
+      </div>
+      <div class="help-note">
+        <h3>Atajos de teclado</h3>
+        <p><kbd>↑</kbd>/<kbd>↓</kbd> en un campo numérico incrementa o reduce el valor (<kbd>Shift</kbd> ×10). <kbd>/</kbd> abre el buscador de distribuciones.</p>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="vendor/katex/katex.min.js" defer></script>
+  <script src="js/special.js" defer></script>
+  <script src="js/distributions.js" defer></script>
+  <script src="js/format.js" defer></script>
+  <script src="js/chart.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>

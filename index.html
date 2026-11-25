@@ -135,7 +135,13 @@
               </button>
             </div>
           </div>
-          <div class="steps" id="steps"></div>
+          <div class="steps-bar">
+            <div class="steps" id="steps"></div>
+            <button class="link-btn proc-link" id="btn-goto-proc" title="Ir al procedimiento completo">
+              Ver procedimiento paso a paso
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+            </button>
+          </div>
 
           <div class="chart-head">
             <h3 class="chart-title" id="chart-title">X ~ N(μ = 0, σ = 1)</h3>
@@ -155,6 +161,14 @@
             <div class="chart-error" id="chart-error" hidden></div>
           </div>
           <p class="chart-foot">Arrastra los puntos rojos o haz clic sobre la gráfica para mover los valores.</p>
+        </article>
+
+        <article class="card proc-card" id="proc-card">
+          <header class="card-head">
+            <h2>Procedimiento</h2>
+            <span class="proc-sub">Fórmulas usadas y sustitución de valores</span>
+          </header>
+          <ol class="proc" id="procedure" aria-live="polite"></ol>
         </article>
 
         <article class="card">
@@ -225,7 +239,8 @@
             <li><b>Inversa</b>: dada una probabilidad p encuentra el valor x (percentiles, valores críticos).</li>
           </ul>
         </li>
-        <li><b>Arrastra los puntos rojos</b> de la gráfica para cambiar x en tiempo real, o haz clic/toca en cualquier punto de la gráfica.</li>
+        <li><b>Arrastra los puntos rojos</b> de la gráfica para cambiar x en tiempo real, o haz clic/toca en cualquier punto de la gráfica. El valor de la probabilidad aparece escrito sobre el área sombreada.</li>
+        <li>Debajo de la gráfica está el <b>Procedimiento</b>: los datos, la fórmula usada, la sustitución de valores (por ejemplo la estandarización z = (x − μ)/σ o la suma de P(X = k)), las operaciones y el resultado con su interpretación.</li>
         <li>Cambia entre <b>Densidad</b> (área bajo la curva = probabilidad) y <b>Acumulada</b> (F(x) = P(X ≤ x)).</li>
         <li>En <b>Fórmulas</b> encontrarás la función de densidad, la acumulada, la media, la varianza y usos de cada distribución. En <b>Tabla</b> puedes generar y exportar tablas de probabilidad.</li>
       </ol>
@@ -251,6 +266,7 @@
   <script src="js/distributions.js" defer></script>
   <script src="js/format.js" defer></script>
   <script src="js/chart.js" defer></script>
+  <script src="js/procedure.js" defer></script>
   <script src="js/app.js" defer></script>
 </body>
 </html>

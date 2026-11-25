@@ -421,30 +421,132 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.2); }
   font-weight: 800;
   letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--accent);
   line-height: 1.15;
   word-break: break-word;
 }
-.result-value.bad { background: none; color: var(--text-faint); }
+/* Degradado solo donde el navegador lo soporta (si no, queda el color sólido) */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .result-value:not(.bad) {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+.result-value.bad { background: none; color: var(--text-faint); -webkit-text-fill-color: currentColor; }
 .result-sub { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 4px; font-size: 13.5px; color: var(--text-muted); }
 .result-sub b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 .result-tools { display: flex; align-items: center; gap: 8px; flex: none; }
 .select-mini { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
 .select-mini select { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 4px 6px; }
 
+.steps-bar {
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+  padding: 8px 20px 10px;
+}
 .steps {
-  padding: 8px 20px 12px;
   font-size: 14px;
   color: var(--text-muted);
   overflow-x: auto;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+  overflow-y: hidden;
+  padding-bottom: 2px;
 }
 .steps:empty { display: none; }
 .steps .katex { font-size: 1.05em; color: var(--text); }
+.proc-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; padding: 2px 0; }
+.proc-link svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------------------------------------------------------- procedimiento */
+.proc-card .card-head { flex-wrap: wrap; gap: 4px 12px; }
+.proc-sub { font-size: 12.5px; color: var(--text-faint); }
+.proc { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: none; }
+.proc-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  padding: 0 0 18px;
+}
+/* línea vertical que une los pasos */
+.proc-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 34px;
+  bottom: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.proc-num {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 14px;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  position: relative;
+  z-index: 1;
+}
+.proc-step.final .proc-num { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.proc-body { min-width: 0; padding-top: 5px; }
+.proc-body h3 { font-size: 15.5px; font-weight: 700; margin-bottom: 4px; }
+.proc-text { margin: 0 0 6px; color: var(--text-muted); font-size: 14px; }
+.proc-math {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 12px;
+  margin: 6px 0;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  -webkit-overflow-scrolling: touch;
+}
+.proc-math .katex-display { margin: 4px 0; text-align: left; }
+.proc-math .katex-display > .katex { text-align: left; font-size: 1.12em; }
+/* Valores clave en caja con fondo verde limón (como al resaltar a mano) */
+.proc-math { isolation: isolate; }
+.proc-math .katex .fbox {
+  position: relative;
+  z-index: -1;
+  background: #d9f99d;
+  border-color: #4d7c0f !important;
+  border-radius: 2px;
+}
+.proc-math .katex .boxpad { color: #1a2e05; font-weight: 600; }
+.proc-step.final .proc-math {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, var(--surface)), color-mix(in srgb, var(--accent-2) 8%, var(--surface)));
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.proc-step.final .proc-text { color: var(--text); font-weight: 600; }
+.proc-note {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent-2);
+  border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--accent-2) 8%, transparent);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.proc-details { margin-top: 8px; }
+.proc-details summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 4px 0;
+  list-style-position: inside;
+}
+.proc-table-wrap { max-height: 320px; margin-top: 6px; }
+.proc-table-wrap .prob-table { font-size: 13px; }
+.proc-table-wrap .prob-table th { font-family: var(--font-sans); font-size: 12.5px; }
+.proc-empty { color: var(--text-muted); padding: 8px 0; }
 
 /* --------------------------------------------------------------- chart */
 .chart-head {
@@ -692,12 +794,19 @@ dialog::backdrop { background: rgba(8, 12, 24, .45); backdrop-filter: blur(3px);
   body[data-view="calc"] .chart-card { order: 2; }
   body[data-view="calc"] .panel-calc { order: 3; }
   body[data-view="calc"] .panel-params { order: 4; }
-  body[data-view="calc"] .view-calc > .card:not(.chart-card) { order: 5; }
+  body[data-view="calc"] .view-calc > .card:not(.chart-card) { order: 6; }
+  body[data-view="calc"] .view-calc > .proc-card { order: 5; }
   body[data-view="formulas"] .panel-params { display: none; }
   .card { padding: 16px; }
   .chart-card { padding: 0; }
   .result { padding: 14px 16px 8px; }
-  .steps { padding: 8px 16px 10px; }
+  .steps-bar { padding: 8px 16px 10px; }
+  .proc-step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
+  .proc-num { width: 28px; height: 28px; font-size: 13px; }
+  .proc-step:not(:last-child)::before { left: 13px; top: 28px; }
+  .proc-body { padding-top: 3px; }
+  .proc-math { padding: 4px 8px; }
+  .proc-math .katex-display > .katex { font-size: 1.02em; }
   .chart-head { padding: 12px 16px 2px; }
   .chart-wrap { height: clamp(260px, 42vh, 420px); margin: 0 2px; }
   .f-row { padding: 12px 16px; }

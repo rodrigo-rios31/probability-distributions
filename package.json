@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/accuracy.test.js"
+    "test": "node tests/accuracy.test.js && node tests/procedure.test.js"
   },
   "license": "MIT"
 }

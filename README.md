@@ -13,9 +13,14 @@ con marcadores que se arrastran) en una sola aplicación web que se puede instal
 - **5 tipos de cálculo**: cola izquierda `P(X ≤ x)`, cola derecha `P(X ≥ x)`, intervalo `P(x₁ ≤ X ≤ x₂)`,
   dos colas y **cálculo inverso** (percentiles, intervalos centrales y valores críticos).
   En las discretas se puede elegir entre `<` y `≤`.
-- **Gráfica interactiva**: área sombreada exacta, puntos rojos que se arrastran (ratón o táctil),
-  tooltip con `f(x)` y `F(x)`, vista de densidad o acumulada, líneas de `μ` y `±σ`, exportar a PNG.
-- **Procedimiento paso a paso** (estandarización z, `F(b) − F(a)`, sumatorias…) con notación matemática.
+- **Gráfica interactiva**: área sombreada exacta con el **valor de la probabilidad escrito sobre el área**
+  (como en Minitab), puntos rojos que se arrastran (ratón o táctil), tooltip con `f(x)` y `F(x)`,
+  vista de densidad o acumulada, líneas de `μ` y `±σ`, exportar a PNG.
+- **Procedimiento paso a paso** para cada cálculo, como se resuelve a mano:
+  datos del problema → planteamiento (integral de la densidad o suma de `P(X = k)` con los valores sustituidos)
+  → método (estandarización `z = (x − μ)/σ` y tabla Z, fórmula cerrada de `F(x)`, regla del complemento,
+  suma término a término con combinaciones y potencias, despeje de `x` en el inverso…) → resultado resaltado
+  con su interpretación. Incluye notas para verificar con calculadora y con la tabla Z impresa.
 - **Medidas**: media, varianza, desviación estándar, mediana, moda, asimetría, curtosis y soporte.
 - **Fórmulas** de cada distribución (densidad/masa, acumulada, media, varianza, FGM) renderizadas con KaTeX,
   con descripción y usos.
@@ -61,7 +66,12 @@ sin conexión.
 
 ```bash
 node tests/accuracy.test.js
+node tests/procedure.test.js
 ```
+
+`procedure.test.js` genera el procedimiento para las 22 distribuciones con todos los tipos de cálculo y
+desigualdades (≈3 600 casos), renderiza cada fórmula con KaTeX y comprueba que el resultado final
+coincide con el de la calculadora.
 
 Para regenerar los valores de referencia: `pip install mpmath` y luego
 `python tests/gen_reference.py > tests/reference.json`.
@@ -75,6 +85,7 @@ js/special.js           Funciones especiales (gamma, beta, normal, Brent…)
 js/distributions.js     Catálogo de distribuciones y utilidades (probabilidades, cuantiles, momentos)
 js/format.js            Formato de números
 js/chart.js             Gráfica interactiva en canvas
+js/procedure.js         Procedimiento paso a paso (fórmulas y sustituciones)
 js/app.js               Lógica de la interfaz
 vendor/katex/           KaTeX 0.16.11 (fórmulas) incluido localmente
 sw.js, manifest.webmanifest   PWA / modo sin conexión

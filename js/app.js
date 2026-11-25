@@ -694,7 +694,20 @@
     if (isFinite(res.value) && state.mode !== 'inverse') {
       res.sub.push(['Porcentaje', `${(res.value * 100).toFixed(Math.max(2, state.decimals - 2))} %`]);
     }
+    // Probabilidad de cada región sombreada (se escribe dentro de la gráfica)
+    res.regions.forEach((r) => {
+      if (!(r.hi >= r.lo)) { r.label = ''; return; }
+      r.prob = regionProb(d, p, r);
+      r.label = isFinite(r.prob) ? fmt.prob(r.prob, state.decimals) : '';
+    });
     return res;
+  }
+
+  function regionProb(d, p, r) {
+    if (r.lo === -Infinity && r.hi === Infinity) return 1;
+    if (r.lo === -Infinity) return D.probOp(d, p, r.hiInc ? '<=' : '<', r.hi);
+    if (r.hi === Infinity) return D.probOp(d, p, r.loInc ? '>=' : '>', r.lo);
+    return D.probBetween(d, p, r.lo, r.hi, r.loInc ? '<=' : '<', r.hiInc ? '<=' : '<');
   }
 
   function computeInverse(res) {
@@ -708,11 +721,10 @@
       return;
     }
     const P = texProb(pv);
-    const near = (a, b) => Math.abs(a - b) <= 1e-12 * Math.max(Math.abs(b), 1e-300);
     res.isInverse = true;
 
     if (t === 'left' || t === 'right') {
-      const xv = t === 'left' ? D.quantile(d, p, pv) : D.isf(d, p, pv);
+      const xv = D.inverseValues(d, p, t, pv).x;
       res.value = xv;
       res.label = t === 'left' ? `x tal que P(X ≤ x) = ${fmt.num(pv)}` : `x tal que P(X ≥ x) = ${fmt.num(pv)}`;
       res.handles.push({ value: xv, label: 'x', draggable: false });
@@ -743,26 +755,8 @@
       return;
     }
 
-    // Central / dos colas
-    const alpha = t === 'central' ? 1 - pv : pv;
-    const half = alpha / 2;
-    let a, b;
-    if (!discrete) {
-      a = D.quantile(d, p, half);
-      b = D.isf(d, p, half);
-    } else if (t === 'central') {
-      // P(a ≤ X ≤ b) ≥ p con colas ≤ α/2 cada una
-      const k0 = D.quantile(d, p, half);
-      a = near(d.cdf(k0, p), half) ? k0 + 1 : k0;
-      const j0 = D.isf(d, p, half);
-      b = near(d.sf(j0 - 1, p), half) ? j0 - 1 : j0;
-    } else {
-      // colas P(X ≤ a) ≤ α/2 y P(X ≥ b) ≤ α/2
-      const k0 = D.quantile(d, p, half);
-      a = near(d.cdf(k0, p), half) ? k0 : k0 - 1;
-      const j0 = D.isf(d, p, half);
-      b = near(d.sf(j0 - 1, p), half) ? j0 : j0 + 1;
-    }
+    // Central / dos colas (misma rutina que usa el procedimiento)
+    const { x1: a, x2: b } = D.inverseValues(d, p, t, pv);
     res.value = a;
     res.value2 = b;
     res.handles.push({ value: a, label: 'x₁', draggable: false });
@@ -801,6 +795,7 @@
       subEl.innerHTML = '';
       $('#steps').innerHTML = '';
       $('#stats').innerHTML = '';
+      renderProcedure(r);
       $('#chart-error').hidden = false;
       $('#chart-error').textContent = r.error;
       chart.setState({ d: dist(), prm: prm(), error: r.error });
@@ -848,8 +843,58 @@
     });
 
     renderStats(r);
+    renderProcedure(r);
     if (state.tab === 'formulas') renderFormulas();
     if (state.tab === 'table') renderTable();
+  }
+
+  /* ================================================================== */
+  /* Procedimiento paso a paso                                           */
+  /* ================================================================== */
+  const procOpen = {};   // estado abierto/cerrado de las tablas desplegables
+
+  function renderProcedure(r) {
+    const box = $('#procedure');
+    if (!box) return;
+    if (r.error) {
+      box.innerHTML = `<li class="proc-empty">${escapeHTML(r.error)}</li>`;
+      return;
+    }
+    let proc;
+    try {
+      proc = PD.procedure.build({
+        d: r.d, p: r.p, mode: state.mode, x1: xs().x1, x2: xs().x2,
+        ops: state.ops, inv: state.inv, decimals: state.decimals, result: r,
+      });
+    } catch (e) {
+      console.error(e);
+      box.innerHTML = '<li class="proc-empty">No se pudo generar el procedimiento para estos valores.</li>';
+      return;
+    }
+    box.innerHTML = proc.steps.map((s, i) => `
+      <li class="proc-step${s.final ? ' final' : ''}">
+        <span class="proc-num" aria-hidden="true">${s.final ? '✓' : i + 1}</span>
+        <div class="proc-body">
+          <h3>${escapeHTML(s.title)}</h3>
+          ${s.text ? `<p class="proc-text">${escapeHTML(s.text)}</p>` : ''}
+          ${s.math.map((m) => `<div class="proc-math">${katexHTML(m, true)}</div>`).join('')}
+          ${s.note ? `<p class="proc-note">${escapeHTML(s.note)}</p>` : ''}
+          ${s.table ? procTable(s.table) : ''}
+        </div>
+      </li>`).join('');
+  }
+
+  function procTable(t) {
+    const key = t.title.replace(/\s*\(.*\)$/, '');
+    const open = procOpen[key] !== undefined ? procOpen[key] : !!t.open;
+    return `<details class="proc-details" data-key="${escapeHTML(key)}"${open ? ' open' : ''}>
+        <summary>${escapeHTML(t.title)}</summary>
+        <div class="table-wrap proc-table-wrap"><table class="prob-table">
+          <thead><tr>${t.headers.map((h) => `<th>${escapeHTML(h)}</th>`).join('')}</tr></thead>
+          <tbody>${t.rows.map((row) => `<tr>${row.map((c) => `<td>${escapeHTML(c)}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table></div>
+        ${t.truncated ? '<p class="hint">Se muestran solo los primeros 500 términos; usa la pestaña Tabla para ver más.</p>' : ''}
+      </details>`;
   }
 
   function chartTitle() {
@@ -1265,6 +1310,15 @@
         ? $('#result-value').textContent.replace(/\s+/g, ' ')
         : `${current.label} = ${fmt.prob(current.value, state.decimals)}`;
       copyText(text);
+    });
+
+    // Procedimiento: recordar qué tablas desplegables están abiertas
+    $('#procedure').addEventListener('toggle', (e) => {
+      const el = e.target;
+      if (el && el.matches && el.matches('details[data-key]')) procOpen[el.dataset.key] = el.open;
+    }, true);
+    $('#btn-goto-proc').addEventListener('click', () => {
+      $('#proc-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     // Tabla

@@ -1,5 +1,5 @@
 /* Service worker: permite usar la app sin conexión (stale-while-revalidate). */
-const CACHE = 'pd-v1';
+const CACHE = 'pd-v2';
 const CORE = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const CORE = [
   './js/distributions.js',
   './js/format.js',
   './js/chart.js',
+  './js/procedure.js',
   './js/app.js',
   './vendor/katex/katex.min.js',
   './vendor/katex/katex.min.css',

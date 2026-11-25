@@ -1258,6 +1258,36 @@
     return lo;
   }
 
+  /**
+   * Cálculo inverso.
+   *   'left'    → x con P(X ≤ x) = p
+   *   'right'   → x con P(X ≥ x) = p
+   *   'central' → [x1, x2] con P(x1 ≤ X ≤ x2) = p (colas iguales)
+   *   'tails'   → x1, x2 con P(X ≤ x1) + P(X ≥ x2) = p (valores críticos)
+   * En discretas: central garantiza P ≥ p con cada cola ≤ α/2;
+   * tails garantiza que cada cola sea ≤ α/2.
+   */
+  function inverseValues(d, prm, type, pv) {
+    if (type === 'left') return { x: quantile(d, prm, pv) };
+    if (type === 'right') return { x: isf(d, prm, pv) };
+    const alpha = type === 'central' ? 1 - pv : pv;
+    const half = alpha / 2;
+    if (!isDiscrete(d)) return { x1: quantile(d, prm, half), x2: isf(d, prm, half) };
+    const near = (a, b) => Math.abs(a - b) <= 1e-12 * Math.max(Math.abs(b), 1e-300);
+    const k0 = quantile(d, prm, half);
+    const j0 = isf(d, prm, half);
+    if (type === 'central') {
+      return {
+        x1: near(d.cdf(k0, prm), half) ? k0 + 1 : k0,
+        x2: near(d.sf(j0 - 1, prm), half) ? j0 - 1 : j0,
+      };
+    }
+    return {
+      x1: near(d.cdf(k0, prm), half) ? k0 : k0 - 1,
+      x2: near(d.sf(j0 - 1, prm), half) ? j0 : j0 + 1,
+    };
+  }
+
   /* --------------------------- estadísticos --------------------------- */
   function stats(d, prm) {
     const mean = d.mean(prm);
@@ -1316,6 +1346,6 @@
   PD.dist = {
     list, byId, defaults, validate, isDiscrete, density,
     cdfAt, sfAt, cdfStrict, sfInclusive, probOp, probBetween,
-    quantile, isf, stats, plotRange,
+    quantile, isf, inverseValues, stats, plotRange,
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

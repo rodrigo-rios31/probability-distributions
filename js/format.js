@@ -63,5 +63,35 @@
     return minus(x.toFixed(Math.min(dec, 10)));
   }
 
-  PD.fmt = { num, prob, input, tick, sup, minus, MINUS };
+  /* ---------------- Versiones para LaTeX (KaTeX) ---------------- */
+  const UNSUP = { '⁻': '-', '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
+
+  /** Convierte un número ya formateado (con ×10ⁿ, −, ∞) a LaTeX. */
+  function tex(s) {
+    return String(s)
+      .replace(/ × 10([⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g, (m, e) => `\\times 10^{${e.replace(/./g, (c) => UNSUP[c])}}`)
+      .replace(/−/g, '-')
+      .replace(/∞/g, '\\infty')
+      .replace('No definido', '\\text{no definido}');
+  }
+  const texNum = (x, sig = 6) => tex(num(x, sig));
+  const texProb = (p, dec = 6) => tex(prob(p, dec));
+  /** Número con decimales fijos (p. ej. z = 1.6000). */
+  const texFix = (x, dec) => (isFinite(x) ? tex(minus(x.toFixed(dec))) : texNum(x));
+
+  /**
+   * Número representado por su log10 (para cantidades que desbordan el
+   * punto flotante, como 100! o C(5000, 2000)).
+   */
+  function texFromLog10(l10, sig = 6) {
+    if (!isFinite(l10)) return l10 > 0 ? '\\infty' : '0';
+    if (l10 > -4 && l10 < 10) return texNum(Math.pow(10, l10), sig);
+    let e = Math.floor(l10);
+    let m = Math.pow(10, l10 - e);
+    let ms = stripZeros(m.toPrecision(sig));
+    if (parseFloat(ms) >= 10) { e += 1; ms = stripZeros((m / 10).toPrecision(sig)); }
+    return `${ms} \\times 10^{${e}}`;
+  }
+
+  PD.fmt = { num, prob, input, tick, sup, minus, MINUS, tex, texNum, texProb, texFix, texFromLog10 };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

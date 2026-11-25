@@ -276,8 +276,163 @@
       else this.drawContinuous(ctx, c, col);
       ctx.restore();
 
+      this.drawRegionLabels(ctx, c, col);
       this.drawHandles(ctx, c, col);
       if (this.hover && !this.drag) this.drawHover(ctx, c, col);
+    }
+
+    /* ------------------------------------------------------------ */
+    /* Etiqueta con el valor de la probabilidad de cada región        */
+    /* (dentro del área si cabe; si no, encima con una línea guía)    */
+    /* ------------------------------------------------------------ */
+    drawRegionLabels(ctx, c, col) {
+      const s = this.state, L = c.L;
+      const regions = (s.regions || []).filter((r) => r.label);
+      if (!regions.length) return;
+      const base = L.top + L.ph;
+      const fontPx = L.compact ? 12.5 : 13.5;
+      ctx.font = `700 ${fontPx}px ${col.font}`;
+      const bh = fontPx + 10;
+      const placed = [];
+      const minX = L.left + 3, maxX = L.left + L.pw - 3;
+      const overlaps = (b) => placed.some((q) => b.x < q.x + q.w + 4 && b.x + b.w + 4 > q.x && b.y < q.y + q.h + 4 && b.y + b.h + 4 > q.y);
+      const clampX = (x, w) => Math.max(minX, Math.min(maxX - w, x));
+
+      // Altura (en px) más alta de la curva/barras sobre un tramo horizontal
+      const topOver = (px0, px1) => {
+        let best = base;
+        if (s.view === 'cdf') return best;
+        if (c.discrete) {
+          for (const pt of c.pts) {
+            const px = c.X(pt.k);
+            if (px >= px0 - 8 && px <= px1 + 8) best = Math.min(best, c.Y(pt.p));
+          }
+        } else {
+          for (let i = 0; i < c.xs.length; i++) {
+            const px = c.X(c.xs[i]);
+            if (px < px0 || px > px1) continue;
+            const y = isFinite(c.ys[i]) ? c.ys[i] : c.ymax * 4;
+            best = Math.min(best, c.Y(y));
+          }
+        }
+        return Math.max(L.top, best);
+      };
+
+      for (const r of regions) {
+        const w = ctx.measureText(r.label).width + 16;
+        let box = null, anchor = null;
+
+        if (s.view === 'cdf') {
+          // Banda horizontal entre F(lo) y F(hi)
+          let Flo, Fhi;
+          if (c.discrete) {
+            Flo = isFinite(r.lo) ? PD.dist.probOp(s.d, s.prm, r.loInc ? '<' : '<=', r.lo) : 0;
+            Fhi = isFinite(r.hi) ? PD.dist.probOp(s.d, s.prm, r.hiInc ? '<=' : '<', r.hi) : 1;
+          } else {
+            Flo = isFinite(r.lo) ? s.d.cdf(r.lo, s.prm) : 0;
+            Fhi = isFinite(r.hi) ? s.d.cdf(r.hi, s.prm) : 1;
+          }
+          const yMid = (c.Y(Flo) + c.Y(Fhi)) / 2;
+          const leftSide = (Flo + Fhi) / 2 > 0.5;
+          const bx = leftSide ? minX + 6 : maxX - w - 6;
+          const bandH = c.Y(Flo) - c.Y(Fhi);
+          if (bandH >= bh + 4) box = { x: bx, y: yMid - bh / 2, w, h: bh };
+          else {
+            box = { x: bx, y: Math.max(L.top + 2, c.Y(Fhi) - bh - 10), w, h: bh };
+            anchor = { x: bx + w / 2, y: yMid };
+          }
+        } else {
+          // Centroide del área visible de la región
+          let xc, fTop, regionW;
+          if (c.discrete) {
+            const inc = c.pts.filter((pt) =>
+              (pt.k > r.lo || (pt.k === r.lo && r.loInc)) && (pt.k < r.hi || (pt.k === r.hi && r.hiInc)));
+            if (inc.length) {
+              const sw = inc.reduce((a, pt) => a + pt.p, 0);
+              xc = sw > 0 ? inc.reduce((a, pt) => a + pt.k * pt.p, 0) / sw : inc[0].k;
+              const nearest = inc.reduce((a, pt) => (Math.abs(pt.k - xc) < Math.abs(a.k - xc) ? pt : a), inc[0]);
+              fTop = nearest.p;
+              regionW = (inc[inc.length - 1].k - inc[0].k + 0.74) * (L.pw / (c.xmax - c.xmin));
+            } else {
+              xc = r.hi < c.kmin ? c.xmin : c.xmax;
+              fTop = 0;
+              regionW = 0;
+            }
+          } else {
+            const lo = Math.max(r.lo, c.xmin), hi = Math.min(r.hi, c.xmax);
+            if (hi > lo) {
+              let sw = 0, sx = 0;
+              for (let i = 0; i < c.xs.length; i++) {
+                const x = c.xs[i];
+                if (x < lo || x > hi) continue;
+                const y = isFinite(c.ys[i]) ? Math.min(c.ys[i], c.ymax) : c.ymax;
+                sw += y; sx += y * x;
+              }
+              xc = sw > 0 ? sx / sw : (lo + hi) / 2;
+              regionW = c.X(hi) - c.X(lo);
+            } else {
+              xc = r.hi <= c.xmin ? c.xmin : c.xmax;
+              regionW = 0;
+            }
+            const f = s.d.pdf(xc, s.prm);
+            fTop = isFinite(f) ? Math.min(f, c.ymax) : c.ymax;
+          }
+          const ax = Math.max(L.left, Math.min(L.left + L.pw, c.X(xc)));
+          const heightPx = base - c.Y(fTop);
+          const fitsInside = regionW >= w + 8 && heightPx >= bh * (c.discrete ? 3.2 : 2.1);
+          if (fitsInside) {
+            // Cabe dentro del área sombreada
+            box = { x: clampX(ax - w / 2, w), y: base - heightPx * (c.discrete ? 0.5 : 0.42) - bh / 2, w, h: bh };
+          } else {
+            // Fuera: encima de la curva, desplazada hacia la cola
+            anchor = { x: ax, y: base - Math.max(3, Math.min(heightPx * 0.45, 14)) };
+            const dir = r.lo === -Infinity ? -1 : r.hi === Infinity ? 1 : 0;
+            const tries = [0, 1, 2, 3, 4, 6, 8, -1, -2, -3, -4];
+            for (const t of tries) {
+              const shift = dir === 0 ? t * 24 : dir * (12 + Math.abs(t) * 22) * (t < 0 ? -1 : 1);
+              const bx = clampX(ax - w / 2 + shift, w);
+              const by = topOver(bx - 4, bx + w + 4) - bh - 12;
+              const cand = { x: bx, y: by, w, h: bh };
+              if (by >= L.top + 2 && !overlaps(cand)) { box = cand; break; }
+            }
+            if (!box) box = { x: clampX(ax - w / 2, w), y: L.top + 2, w, h: bh };
+          }
+        }
+
+        // Evitar que dos etiquetas se encimen
+        for (let k = 0; k < 6 && overlaps(box); k++) box.y = Math.max(L.top + 2, box.y - bh - 6);
+        placed.push(box);
+
+        // Línea guía
+        if (anchor) {
+          const ex = Math.max(box.x + 6, Math.min(box.x + box.w - 6, anchor.x));
+          const ey = box.y + box.h;
+          ctx.save();
+          ctx.strokeStyle = col.fillStrong;
+          ctx.lineWidth = 1.25;
+          ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(anchor.x, anchor.y); ctx.stroke();
+          ctx.fillStyle = col.fillStrong;
+          ctx.beginPath(); ctx.arc(anchor.x, anchor.y, 2.75, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        }
+        // Caja
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,.18)';
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = col.bg;
+        roundRect(ctx, box.x, box.y, box.w, box.h, 7);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = col.fillStrong;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = col.fillStrong;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `700 ${fontPx}px ${col.font}`;
+        ctx.fillText(r.label, box.x + box.w / 2, box.y + box.h / 2 + 0.5);
+        ctx.restore();
+      }
     }
 
     drawMarkers(ctx, c, col) {
